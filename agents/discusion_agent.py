@@ -1,180 +1,152 @@
-from crewai import Agent
-from tools.content_analyzer import ContentAnalyzer
+from crewai import Agent, Task
+from config.settings import ModelConfig, AgentSettings
 
 class DiscusionAgent:
-    """
-    Agente especializado en la creación de secciones de discusión
-    """
-    
-    def __init__(self):
-        self.agent = Agent(
-            role='Discussion and Analysis Specialist',
-            goal='Create comprehensive discussion sections that interpret results and provide deep insights',
-            backstory="""You are an expert in academic writing and critical analysis. 
-            You excel at creating discussion sections that go beyond simple result reporting 
-            to provide deep insights, critical analysis, and meaningful interpretation. 
-            Your discussions always connect findings to broader implications and future research.""",
-            verbose=True,
-            allow_delegation=False,
-            tools=[ContentAnalyzer()]
+    def __init__(self, model_config: ModelConfig):
+        self.model_config = model_config
+        
+    def create_agent(self) -> Agent:
+        """Crea el agente de Discusión"""
+        return Agent(
+            role=AgentSettings.DISCUSION_AGENT["role"],
+            goal=AgentSettings.DISCUSION_AGENT["goal"],
+            backstory=AgentSettings.DISCUSION_AGENT["backstory"],
+            verbose=AgentSettings.DISCUSION_AGENT["verbose"],
+            allow_delegation=AgentSettings.DISCUSION_AGENT["allow_delegation"],
+            llm=self.model_config.get_default_model()
         )
     
-    def create_discussion_section(self, results, research_context, literature_review):
-        """
-        Crea una sección de discusión completa
-        """
-        task = f"""
-        Create a comprehensive discussion section for the research:
-        
-        Research Results:
-        {results}
-        
-        Research Context:
-        {research_context}
-        
-        Literature Review:
-        {literature_review}
-        
-        Please develop:
-        1. Interpretation of key findings
-        2. Comparison with existing literature
-        3. Theoretical implications
-        4. Practical applications
-        5. Limitations and caveats
-        
-        The discussion should:
-        - Provide deep analysis, not just summary
-        - Connect findings to broader context
-        - Address research questions directly
-        - Identify unexpected findings
-        - Suggest future research directions
-        """
-        
-        result = self.agent.execute(task)
-        return result
-    
-    def analyze_implications(self, findings, target_audience):
-        """
-        Analiza las implicaciones de los hallazgos
-        """
-        task = f"""
-        Analyze the implications of the research findings:
-        
-        Key Findings:
-        {findings}
-        
-        Target Audience:
-        {target_audience}
-        
-        Please examine:
-        1. Theoretical implications
-        2. Practical applications
-        3. Policy implications (if applicable)
-        4. Industry impact
-        5. Societal relevance
-        
-        Consider:
-        - Immediate vs. long-term implications
-        - Different stakeholder perspectives
-        - Implementation challenges
-        - Success factors
-        - Risk assessment
-        """
-        
-        result = self.agent.execute(task)
-        return result
-    
-    def address_limitations(self, research_design, methodology, results):
-        """
-        Aborda las limitaciones del estudio
-        """
-        task = f"""
-        Address the limitations of the research study:
-        
-        Research Design:
-        {research_design}
-        
-        Methodology:
-        {methodology}
-        
-        Results:
-        {results}
-        
-        Please identify:
-        1. Methodological limitations
-        2. Sample size and selection issues
-        3. Data collection constraints
-        4. Analysis limitations
-        5. Generalizability concerns
-        
-        For each limitation:
-        - Explain its impact on results
-        - Suggest mitigation strategies
-        - Acknowledge transparency
-        - Provide context for interpretation
-        """
-        
-        result = self.agent.execute(task)
-        return result
-    
-    def suggest_future_research(self, current_findings, identified_gaps):
-        """
-        Sugiere direcciones para investigación futura
-        """
-        task = f"""
-        Suggest future research directions based on current findings:
-        
-        Current Findings:
-        {current_findings}
-        
-        Identified Gaps:
-        {identified_gaps}
-        
-        Please recommend:
-        1. Immediate follow-up studies
-        2. Long-term research agenda
-        3. Methodological improvements
-        4. New research questions
-        5. Collaborative opportunities
-        
-        Consider:
-        - Feasibility and resources
-        - Scientific priority
-        - Practical relevance
-        - Innovation potential
-        - Impact on the field
-        """
-        
-        result = self.agent.execute(task)
-        return result
-    
-    def create_critical_analysis(self, results, alternative_explanations):
-        """
-        Crea un análisis crítico de los resultados
-        """
-        task = f"""
-        Create a critical analysis of the research results:
-        
-        Research Results:
-        {results}
-        
-        Alternative Explanations:
-        {alternative_explanations}
-        
-        Please provide:
-        1. Critical evaluation of findings
-        2. Alternative interpretations
-        3. Confounding factors
-        4. Bias assessment
-        5. Robustness of conclusions
-        
-        The analysis should:
-        - Be objective and balanced
-        - Consider multiple perspectives
-        - Identify potential weaknesses
-        - Suggest validation approaches
-        - Maintain scientific rigor
-        """
-        
-        result = self.agent.execute(task)
-        return result
+    def create_discusion_task(self, agent: Agent) -> Task:
+        """Crea la tarea de Discusión y Trabajos Futuros"""
+        return Task(
+            description="""
+            Interpreta los hallazgos encontrados, analiza sus implicaciones estratégicas 
+            e identifica áreas críticas para investigación futura. Proporciona una perspectiva 
+            estratégica y visionaria.
+            
+            Tu análisis debe incluir:
+            
+            1. **INTERPRETACIÓN DE HALLAZGOS** (500-600 palabras):
+               
+               **Significado Estratégico**
+               - Qué significan realmente los hallazgos para la industria
+               - Cómo cambian las reglas del juego actuales
+               - Impacto en diferentes tipos de empresas (startup, PYME, enterprise)
+               - Redefinición de best practices tradicionales
+               
+               **Contexto Competitivo**
+               - Ventajas competitivas que emergen
+               - Amenazas para modelos de negocio existentes
+               - Oportunidades de diferenciación
+               - Nuevos players vs. incumbentes
+               
+               **Implicaciones Económicas**
+               - Impacto en costos operativos
+               - Nuevas fuentes de revenue
+               - ROI esperado de adopción temprana
+               - Riesgos de no adaptarse
+            
+            2. **IMPLICACIONES PRÁCTICAS** (600-700 palabras):
+               
+               **Para CMOs y Marketing Leaders**
+               - Cambios necesarios en estrategia organizacional
+               - Nuevas competencias requeridas en el equipo
+               - Inversiones prioritarias en tecnología
+               - KPIs que necesitan redefinirse
+               
+               **Para Equipos de Contenido**
+               - Evolución necesaria en processes creativos
+               - Nuevas herramientas a adoptar
+               - Skills gaps a cerrar
+               - Workflows a rediseñar
+               
+               **Para Organizaciones**
+               - Impacto en estructura organizacional
+               - Necesidades de training y upskilling
+               - Cambios en budget allocation
+               - Timeline de transformación sugerido
+               
+               **Para la Industria en General**
+               - Consolidación vs. fragmentación esperada
+               - Estándares emergentes a adoptar
+               - Regulaciones potenciales a considerar
+               - Ecosystem partnerships necesarios
+            
+            3. **IDENTIFICACIÓN DE RIESGOS Y OPORTUNIDADES** (400-500 palabras):
+               
+               **Riesgos Principales**
+               - Riesgos de adopción temprana vs. tardía
+               - Amenazas tecnológicas disruptivas
+               - Cambios regulatorios potenciales
+               - Volatilidad del consumer behavior
+               
+               **Oportunidades Emergentes**
+               - Nichos de mercado sin explotar
+               - Aplicaciones innovadoras de tecnologías
+               - Partnerships estratégicos potenciales
+               - Monetización de nuevos formatos
+            
+            4. **INVESTIGACIÓN FUTURA NECESARIA** (500-600 palabras):
+               
+               **Áreas de Investigación Prioritarias**
+               - Gaps de conocimiento identificados
+               - Preguntas sin respuesta que surgen
+               - Metodologías de investigación recomendadas
+               - Timeline sugerido para cada área
+               
+               **Estudios Longitudinales Recomendados**
+               - Métricas a trackear en el tiempo
+               - Cohortes a seguir
+               - Frecuencia de medición sugerida
+               
+               **Investigación Experimental Sugerida**
+               - Hipótesis a testear
+               - Experimentos recomendados
+               - Variables a controlar
+               - Métricas de éxito a definir
+               
+               **Colaboraciones Académicas**
+               - Partnerships universidad-industria sugeridos
+               - Temas para tesis y papers académicos
+               - Conferencias y journals relevantes
+            """,
+            expected_output="""
+            Sección completa de Discusión y Trabajos Futuros que incluya:
+            
+            **INTERPRETACIÓN ESTRATÉGICA DE HALLAZGOS**
+            - Significado profundo de los resultados
+            - Contexto competitivo y económico
+            - Implicaciones para diferentes stakeholders
+            - Redefinición de paradigmas actuales
+            
+            **IMPLICACIONES PRÁCTICAS DETALLADAS**
+            - Recomendaciones específicas por rol (CMO, Content Teams, etc.)
+            - Cambios organizacionales necesarios
+            - Inversiones y recursos requeridos
+            - Timeline de implementación sugerido
+            
+            **ANÁLISIS DE RIESGOS Y OPORTUNIDADES**
+            - Matriz de riesgos identificados
+            - Oportunidades emergentes categorizadas
+            - Estrategias de mitigación y aprovechamiento
+            - Factores críticos de éxito
+            
+            **AGENDA DE INVESTIGACIÓN FUTURA**
+            - 5-7 áreas prioritarias de investigación
+            - Metodologías recomendadas para cada área
+            - Preguntas específicas a investigar
+            - Timeline y resources necesarios
+            - Potenciales colaboradores y partners
+            
+            **CALL TO ACTION PARA LA INDUSTRIA**
+            - Acciones inmediatas recomendadas
+            - Iniciativas colaborativas sugeridas
+            - Métricas a establecer industrywide
+            - Próximos pasos concretos
+            
+            Total: 2,000-2,400 palabras
+            Tono: Estratégico, visionario, pero pragmático
+            Enfoque: Future-oriented con actionable insights
+            """,
+            agent=agent
+        )
