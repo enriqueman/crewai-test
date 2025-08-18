@@ -1,131 +1,158 @@
-from crewai import Agent, Task
-from config.settings import ModelConfig, AgentSettings
+import os
+from typing import Dict, Any
+from langchain_openai import ChatOpenAI
+from langchain_community.llms import Ollama
 
-class BibliografiaAgent:
-    def __init__(self, model_config: ModelConfig):
-        self.model_config = model_config
+class ModelConfig:
+    """Configuración de modelos de IA"""
+    
+    def __init__(self):
+        self.openai_api_key = os.getenv('OPENAI_API_KEY')
+        self.serper_api_key = os.getenv('SERPER_API_KEY')  # Para búsquedas web
         
-    def create_agent(self) -> Agent:
-        """Crea el agente de Bibliografía"""
-        return Agent(
-            role=AgentSettings.BIBLIOGRAFIA_AGENT["role"],
-            goal=AgentSettings.BIBLIOGRAFIA_AGENT["goal"],
-            backstory=AgentSettings.BIBLIOGRAFIA_AGENT["backstory"],
-            verbose=AgentSettings.BIBLIOGRAFIA_AGENT["verbose"],
-            allow_delegation=AgentSettings.BIBLIOGRAFIA_AGENT["allow_delegation"],
-            llm=self.model_config.get_default_model()
+    def get_openai_model(self, model_name: str = "gpt-4-turbo-preview") -> ChatOpenAI:
+        """Obtiene modelo de OpenAI"""
+        return ChatOpenAI(
+            model=model_name,
+            temperature=0.7,
+            api_key=self.openai_api_key
         )
     
-    def create_bibliografia_task(self, agent: Agent) -> Task:
-        """Crea la tarea de Bibliografía y Referencias"""
-        return Task(
-            description="""
-            Crea una bibliografía profesional y completa que incluya todas las fuentes 
-            utilizadas en el artículo, formateadas según estándares académicos y profesionales.
-            
-            Tu tarea incluye:
-            
-            1. **IDENTIFICACIÓN DE FUENTES**:
-               - Extraer todas las referencias mencionadas en el artículo
-               - Identificar fuentes citadas directa e indirectamente
-               - Categorizar por tipo de fuente (estudios, reportes, artículos, etc.)
-               - Verificar credibilidad y autoridad de cada fuente
-               - Priorizar fuentes primarias sobre secundarias
-            
-            2. **FORMATEO PROFESIONAL DE REFERENCIAS**:
-               
-               **Estudios y Reportes de Investigación**
-               - Formato: Autor(es). (Año). "Título del Estudio". Institución/Organización. URL. [Fecha de acceso]
-               - Incluir metodología cuando esté disponible
-               - Mencionar tamaño de muestra y geografía si es relevante
-               
-               **Artículos de Publicaciones Especializadas**
-               - Formato: Autor. (Fecha). "Título del Artículo". Nombre de la Publicación. URL. [Fecha de acceso]
-               - Indicar si es contenido premium o gated
-               
-               **Reportes de Empresas y Agencias**
-               - Formato: Empresa/Agencia. (Año). "Título del Reporte". [Tipo de reporte]. URL. [Fecha de acceso]
-               - Distinguir entre reportes públicos y privados
-               
-               **Datos Estadísticos y Métricas**
-               - Formato: Fuente de Datos. (Año). "Descripción del Dataset/Métrica". Plataforma/Tool. URL. [Fecha de acceso]
-               - Incluir periodo de tiempo cubierto por los datos
-               
-               **Casos de Estudio y Ejemplos**
-               - Formato: Empresa. (Año). "Descripción del Caso". Fuente de Información. URL. [Fecha de acceso]
-               - Indicar si el caso fue public disclosure o case study formal
-            
-            3. **ORGANIZACIÓN Y CATEGORIZACIÓN**:
-               
-               **Referencias Primarias** (Fuentes originales de datos/investigación):
-               - Estudios académicos peer-reviewed
-               - Reportes de investigación original
-               - Datos primarios de plataformas
-               - Surveys y encuestas originales
-               
-               **Referencias Secundarias** (Análisis y interpretaciones):
-               - Artículos de análisis en publicaciones especializadas
-               - Reportes de agencias basados en múltiples fuentes
-               - Análisis de expertos y thought leaders
-               
-               **Referencias de Apoyo** (Contexto y ejemplos):
-               - Casos de estudio públicos
-               - Ejemplos de implementación
-               - Best practices documentadas
-               - Tools y plataformas mencionadas
-            
-            4. **CONTROL DE CALIDAD**:
-               - Verificar que todas las URLs estén activas
-               - Confirmar fechas de publicación y acceso
-               - Validar credibilidad de las fuentes
-               - Asegurar diversidad en tipos de fuentes
-               - Mantener balance entre fuentes académicas y practitioner
-            
-            5. **RECURSOS ADICIONALES**:
-               - Lecturas recomendadas para profundizar
-               - Expertos y thought leaders a seguir
-               - Publicaciones especializadas relevantes
-               - Conferencias y eventos relacionados
-               - Herramientas y plataformas mencionadas
-            """,
-            expected_output="""
-            Sección completa de Bibliografía y Referencias que incluya:
-            
-            **REFERENCIAS PRIMARIAS** (15-20 fuentes)
-            - Estudios académicos y de investigación
-            - Reportes originales de organizaciones reconocidas
-            - Datos primarios de plataformas líderes
-            - Formato profesional consistente
-            - Ordenadas alfabéticamente por autor/organización
-            
-            **REFERENCIAS SECUNDARIAS** (10-15 fuentes)
-            - Artículos de análisis en publicaciones especializadas
-            - Reportes de agencias y consultoras
-            - Análisis de expertos reconocidos
-            - Formato consistente con referencias primarias
-            
-            **REFERENCIAS DE APOYO** (8-12 fuentes)
-            - Casos de estudio específicos
-            - Ejemplos de implementación
-            - Best practices documentadas
-            - Herramientas y plataformas citadas
-            
-            **NOTAS DE CREDIBILIDAD**
-            - Indicador de calidad/confiabilidad por fuente
-            - Fecha de última verificación de URLs
-            - Comentarios sobre limitaciones de datos cuando relevante
-            
-            **RECURSOS ADICIONALES RECOMENDADOS**
-            - 5-8 lecturas complementarias
-            - 3-5 expertos/thought leaders a seguir
-            - 2-3 publicaciones especializadas
-            - 3-5 conferencias/eventos anuales relevantes
-            - 5-7 herramientas/plataformas útiles
-            
-            **TOTAL ESTIMADO**: 35-50 referencias bien categorizadas
-            **FORMATO**: Estilo académico modificado para business
-            **CALIDAD**: URLs verificadas, fuentes creíbles, diversidad adecuada
-            **ORGANIZACIÓN**: Clara categorización y easy scanning
-            """,
-            agent=agent
+    def get_local_model(self, model_name: str = "llama3.1:8b") -> Ollama:
+        """Obtiene modelo local (si está disponible)"""
+        return Ollama(
+            model=model_name,
+            temperature=0.7
         )
+    
+    def get_default_model(self):
+        """Obtiene el modelo por defecto basado en disponibilidad"""
+        if self.openai_api_key:
+            return self.get_openai_model()
+        else:
+            return self.get_local_model()
+
+class AgentSettings:
+    """Configuración específica para cada agente"""
+    
+    # Agentes originales
+    RESEARCH_AGENT = {
+        "role": "Senior Content Marketing Researcher",
+        "goal": "Investigar y recopilar las últimas tendencias en content marketing",
+        "backstory": """Eres un investigador experto en marketing digital con 10+ años 
+        de experiencia. Tu especialidad es identificar tendencias emergentes y 
+        analizar datos de mercado para proporcionar insights valiosos.""",
+        "verbose": True,
+        "allow_delegation": False
+    }
+    
+    ANALYST_AGENT = {
+        "role": "Content Marketing Strategy Analyst",
+        "goal": "Analizar y sintetizar información de tendencias para crear insights accionables",
+        "backstory": """Eres un analista estratégico especializado en content marketing.
+        Tu expertise está en tomar datos complejos y convertirlos en estrategias 
+        claras y accionables para empresas.""",
+        "verbose": True,
+        "allow_delegation": False
+    }
+    
+    WRITER_AGENT = {
+        "role": "Expert Content Marketing Writer",
+        "goal": "Crear artículos de alta calidad sobre content marketing",
+        "backstory": """Eres un escritor profesional especializado en marketing digital.
+        Tu habilidad está en crear contenido engaging, bien estructurado y 
+        altamente informativo que resuene con audiencias profesionales.""",
+        "verbose": True,
+        "allow_delegation": False
+    }
+    
+    # Nuevos agentes especializados
+    ABSTRACT_KEYWORDS_AGENT = {
+        "role": "Academic Abstract and Keywords Specialist",
+        "goal": "Crear resúmenes ejecutivos profesionales, extraer palabras clave y establecer marcos teóricos",
+        "backstory": """Eres un especialista en escritura académica y profesional con expertise 
+        en crear abstracts convincentes y identificar keywords estratégicas. Tu especialidad es 
+        sintetizar información compleja en resúmenes claros y establecer marcos teóricos sólidos.""",
+        "verbose": True,
+        "allow_delegation": False
+    }
+    
+    DESARROLLO_AGENT = {
+        "role": "Content Development Specialist",
+        "goal": "Desarrollar el contenido principal del artículo con análisis profundo y estructura lógica",
+        "backstory": """Eres un experto en desarrollo de contenido especializado en crear 
+        secciones principales de artículos. Tu fortaleza está en organizar información compleja 
+        en narrativas coherentes y desarrollar análisis profundos con ejemplos prácticos.""",
+        "verbose": True,
+        "allow_delegation": False
+    }
+    
+    RESULTADOS_AGENT = {
+        "role": "Data Analysis and Findings Specialist",
+        "goal": "Analizar datos, presentar hallazgos y crear visualizaciones conceptuales",
+        "backstory": """Eres un analista de datos especializado en interpretar información 
+        de marketing y presentar hallazgos de manera clara. Tu expertise está en extraer 
+        insights significativos y presentar resultados de forma comprensible.""",
+        "verbose": True,
+        "allow_delegation": False
+    }
+    
+    DISCUSION_AGENT = {
+        "role": "Strategic Discussion and Future Research Specialist",
+        "goal": "Interpretar implicaciones estratégicas e identificar áreas de investigación futura",
+        "backstory": """Eres un pensador estratégico especializado en interpretar resultados 
+        y sus implicaciones para el futuro del marketing. Tu habilidad está en conectar 
+        hallazgos actuales con tendencias futuras y oportunidades de investigación.""",
+        "verbose": True,
+        "allow_delegation": False
+    }
+    
+    CONCLUSIONES_AGENT = {
+        "role": "Strategic Conclusions Synthesizer",
+        "goal": "Sintetizar todos los elementos en conclusiones estratégicas y accionables",
+        "backstory": """Eres un sintetizador experto especializado en crear conclusiones 
+        poderosas que integren todos los elementos del artículo. Tu fortaleza está en 
+        destiliar insights complejos en takeaways claros y accionables.""",
+        "verbose": True,
+        "allow_delegation": False
+    }
+    
+    BIBLIOGRAFIA_AGENT = {
+        "role": "Academic References and Citation Specialist",
+        "goal": "Formatear referencias académicas y crear bibliografías profesionales",
+        "backstory": """Eres un especialista en documentación académica y profesional. 
+        Tu expertise está en crear bibliografías impecables, formatear citas correctamente 
+        y asegurar la credibilidad académica del contenido.""",
+        "verbose": True,
+        "allow_delegation": False
+    }
+
+# Configuraciones adicionales para el sistema académico
+class AcademicConfig:
+    """Configuración específica para el sistema académico"""
+    
+    # Configuración de timeouts y límites
+    TIMEOUTS = {
+        "research_timeout": 300,  # 5 minutos
+        "analysis_timeout": 240,  # 4 minutos
+        "writing_timeout": 600,   # 10 minutos por agente de escritura
+        "total_timeout": 1800     # 30 minutos total
+    }
+    
+    # Configuración de calidad
+    QUALITY_METRICS = {
+        "min_word_count_per_section": 200,
+        "max_word_count_per_section": 800,
+        "min_references": 25,
+        "min_keywords": 8,
+        "min_sections": 5
+    }
+    
+    # Configuración de formato
+    FORMAT_SETTINGS = {
+        "citation_style": "business_academic",
+        "reference_format": "apa_modified",
+        "markdown_headers": True,
+        "include_toc": True,
+        "include_abstract": True
+    }

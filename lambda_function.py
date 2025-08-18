@@ -43,8 +43,10 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         
         action = body.get('action', event.get('action', 'generate_article'))
         topic = body.get('topic', event.get('topic'))
+        crew_type = body.get('crew_type', event.get('crew_type', 'basic'))  # Nuevo parámetro
+        format_type = body.get('format_type', event.get('format_type', 'blog'))  # Nuevo parámetro
         
-        logger.info(f"Ejecutando acción: {action}")
+        logger.info(f"Ejecutando acción: {action}, crew_type: {crew_type}, format: {format_type}")
         
         # Validar variables de entorno críticas
         required_env_vars = ['OPENAI_API_KEY', 'SERPER_API_KEY']
@@ -53,8 +55,13 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         if missing_vars:
             logger.warning(f"Variables de entorno faltantes: {missing_vars}")
         
-        # Inicializar el crew
-        crew = ContentMarketingCrew()
+        # Inicializar el crew según el tipo solicitado
+        if crew_type == "basic":
+            from crew.basic_content_crew import BasicContentMarketingCrew
+            crew = BasicContentMarketingCrew()
+        else:
+            from crew.content_crew import ContentMarketingCrew
+            crew = ContentMarketingCrew()
         
         # Manejar diferentes acciones
         if action == 'health_check':
@@ -64,7 +71,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             response = handle_get_status(crew)
             
         elif action == 'generate_article':
-            response = handle_generate_article(crew, topic)
+            response = handle_generate_article(crew, topic, crew_type, format_type)
             
         else:
             response = {
@@ -145,38 +152,36 @@ def handle_get_status(crew: ContentMarketingCrew) -> Dict[str, Any]:
             'error': f'Error obteniendo status: {str(e)}'
         }
 
-def handle_generate_article(crew: ContentMarketingCrew, topic: str = None) -> Dict[str, Any]:
+def handle_generate_article(crew, topic: str = None, crew_type: str = "basic", format_type: str = "blog") -> Dict[str, Any]:
     """Genera un artículo usando el crew de agentes"""
     try:
-        logger.info(f"Iniciando generación de artículo. Tópico: {topic or 'general'}")
+        logger.info(f"Iniciando generación de artículo. Tópico: {topic or 'general'}, Crew: {crew_type}, Formato: {format_type}")
         
         # Ejecutar el crew
-        result = crew.run_crew(topic=topic)
+        if crew_type == "basic":
+            result = crew.run_crew(topic=topic, format_type=format_type)
+        else:
+            result = crew.run_crew(topic=topic)
         
         if result['success']:
-            logger.info("Artículo académico generado exitosamente")
+            logger.info(f"Artículo generado exitosamente con crew {crew_type}")
+            
+            article_type = "artículo de blog" if crew_type == "basic" else "artículo académico"
             
             return {
                 'success': True,
-                'message': 'Artículo académico generado exitosamente',
+                'message': f'{article_type.title()} generado exitosamente',
                 'timestamp': context_timestamp(),
                 'topic': topic or 'Tendencias generales en content marketing',
+                'crew_type': crew_type,
+                'format_type': format_type,
                 'result': result,
                 'metadata': {
-                    'agents_used': [
-                        'researcher', 'analyst', 'abstract_writer', 
-                        'content_developer', 'results_analyst', 
-                        'discussion_strategist', 'conclusions_synthesizer', 
-                        'bibliography_specialist'
-                    ],
-                    'sections_generated': [
-                        'research', 'analysis', 'abstract_keywords',
-                        'desarrollo', 'resultados', 'discusion',
-                        'conclusiones', 'bibliografia'
-                    ],
-                    'article_type': 'academic_quality',
-                    'process': 'sequential_specialized',
-                    'execution_time': 'Variable (20-30 min estimated)'
+                    'agents_used': result.get('metadata', {}).get('agents_count', 3),
+                    'workflow_type': crew_type,
+                    'article_type': article_type,
+                    'estimated_length': result.get('metadata', {}).get('output_length', 'Variable'),
+                    'execution_time': result.get('metadata', {}).get('estimated_time', 'Variable')
                 }
             }
         else:
@@ -186,6 +191,7 @@ def handle_generate_article(crew: ContentMarketingCrew, topic: str = None) -> Di
                 'success': False,
                 'error': 'Error generando artículo',
                 'details': result.get('error'),
+                'crew_type': crew_type,
                 'debug_info': result
             }
             
@@ -195,6 +201,7 @@ def handle_generate_article(crew: ContentMarketingCrew, topic: str = None) -> Di
         return {
             'success': False,
             'error': f'Error ejecutando crew: {str(e)}',
+            'crew_type': crew_type,
             'type': type(e).__name__
         }
 
