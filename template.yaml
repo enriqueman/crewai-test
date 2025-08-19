@@ -1,0 +1,142 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: CrewAI Content Marketing - Sistema de agentes para generación de contenido
+
+# Parámetros básicos
+Parameters:
+  Stage:
+    Type: String
+    Default: dev
+    Description: Environment stage (dev, staging, prod)
+    AllowedValues:
+      - dev
+      - staging
+      - prod
+  
+  OpenAIAPIKey:
+    Type: String
+    NoEcho: true
+    Description: OpenAI API Key
+  
+  SerperAPIKey:
+    Type: String
+    NoEcho: true
+    Description: Serper API Key for web search
+
+# Configuración global
+Globals:
+  Function:
+    Runtime: python3.11
+    Architectures:
+      - x86_64
+    Environment:
+      Variables:
+        STAGE: !Ref Stage
+
+Resources:
+  # Función Lambda principal
+  CrewAIContentFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "crewai-content-marketing-${Stage}"
+      CodeUri: ./
+      Handler: lambda_function.lambda_handler
+      Description: !Sub "CrewAI Content Marketing Function - ${Stage}"
+      
+      # Configuración por ambiente
+      MemorySize: !If 
+        - IsProd
+        - 2048
+        - !If 
+          - IsStaging
+          - 2048
+          - 1024
+      
+      Timeout: !If 
+        - IsProd
+        - 1800
+        - !If 
+          - IsStaging
+          - 1200
+          - 900
+      
+      # Variables de entorno
+      Environment:
+        Variables:
+          OPENAI_API_KEY: !Ref OpenAIAPIKey
+          SERPER_API_KEY: !Ref SerperAPIKey
+          STAGE: !Ref Stage
+      
+      # API Gateway Events - Método ANY para catch-all
+      Events:
+        CatchAllAPI:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CrewAIAPI
+            Path: /{proxy+}
+            Method: ANY
+        
+        RootAPI:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CrewAIAPI
+            Path: /
+            Method: ANY
+
+  # API Gateway
+  CrewAIAPI:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: !Sub "crewai-content-marketing-${Stage}"
+      StageName: !Ref Stage
+      Description: !Sub "CrewAI Content Marketing API - ${Stage}"
+      
+      # CORS Configuration
+      Cors:
+        AllowMethods: "'GET,POST,OPTIONS,PUT,DELETE'"
+        AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+        AllowOrigin: "'*'"
+        MaxAge: "'600'"
+      
+      # Gateway Responses para CORS en errores
+      GatewayResponses:
+        DEFAULT_4XX:
+          ResponseParameters:
+            Headers:
+              Access-Control-Allow-Origin: "'*'"
+              Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key'"
+        DEFAULT_5XX:
+          ResponseParameters:
+            Headers:
+              Access-Control-Allow-Origin: "'*'"
+              Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key'"
+
+  # Log Group para la función
+  CrewAILogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/crewai-content-marketing-${Stage}"
+      RetentionInDays: !If 
+        - IsProd
+        - 30
+        - 14
+
+# Condiciones para diferentes ambientes
+Conditions:
+  IsProd: !Equals [!Ref Stage, "prod"]
+  IsStaging: !Equals [!Ref Stage, "staging"]
+  IsDev: !Equals [!Ref Stage, "dev"]
+
+# Outputs - Solo la URL del API Gateway
+Outputs:
+  CrewAIApiUrl:
+    Description: !Sub "CrewAI Content Marketing API URL - ${Stage}"
+    Value: !Sub "https://${CrewAIAPI}.execute-api.${AWS::Region}.amazonaws.com/${Stage}"
+    Export:
+      Name: !Sub "${AWS::StackName}-api-url"
+  
+  ApiGatewayId:
+    Description: "API Gateway ID"
+    Value: !Ref CrewAIAPI
+    Export:
+      Name: !Sub "${AWS::StackName}-api-id"
